@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>手机模拟Xbox手柄</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      touch-action: manipulation; /* 禁用触摸缩放 */
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      background-color: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px 10px;
+      font-family: Arial, sans-serif;
+      color: #fff;
+    }
+
+    /* 连接状态提示 */
+    .status {
+      text-align: center;
+      font-size: 14px;
+      margin-bottom: 10px;
+      height: 20px;
+    }
+
+    .status.connected {
+      color: #4CAF50;
+    }
+
+    .status.disconnected {
+      color: #f44336;
+    }
+
+    /* 上半部分：功能键 + 方向键 */
+    .top-area {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+    }
+
+    /* 方向键（十字键） */
+    .d-pad {
+      width: 120px;
+      height: 120px;
+      position: relative;
+    }
+
+    .d-pad-btn {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background-color: #333;
+      border-radius: 4px;
+      touch-action: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #999;
+    }
+
+    .d-up { top: 0; left: 40px; }
+    .d-down { bottom: 0; left: 40px; }
+    .d-left { left: 0; top: 40px; }
+    .d-right { right: 0; top: 40px; }
+
+    .d-pad-btn:active {
+      background-color: #666;
+    }
+
+    /* 功能键区域（A/B/X/Y + 菜单键） */
+    .action-buttons {
+      width: 120px;
+      height: 120px;
+      position: relative;
+    }
+
+    .action-btn {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      touch-action: none;
+    }
+
+    .btn-a { background-color: #4CAF50; bottom: 0; left: 40px; }
+    .btn-b { background-color: #f44336; right: 0; top: 40px; }
+    .btn-x { background-color: #2196F3; left: 0; top: 40px; }
+    .btn-y { background-color: #FFC107; top: 0; left: 40px; color: #1a1a1a; }
+
+    .action-btn:active {
+      opacity: 0.7;
+      transform: scale(0.95);
+    }
+
+    /* 中间功能键（菜单/视图/西瓜键） */
+    .middle-buttons {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .middle-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 4px;
+      background-color: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: none;
+    }
+
+    .middle-btn:active {
+      background-color: #666;
+    }
+
+    /* 下半部分：左右摇杆 + 扳机键 */
+    .bottom-area {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+    }
+
+    /* 摇杆样式 */
+    .joystick {
+      width: 80px;
+      height: 80px;
+      background-color: #222;
+      border-radius: 50%;
+      position: relative;
+      touch-action: none;
+      overflow: hidden;
+    }
+
+    .joystick-knob {
+      width: 40px;
+      height: 40px;
+      background-color: #555;
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      touch-action: none;
+      z-index: 2;
+    }
+
+    .joystick:active .joystick-knob {
+      background-color: #777;
+    }
+
+    /* 扳机键（LT/RT） */
+    .triggers {
+      display: flex;
+      gap: 20px;
+    }
+
+    .trigger {
+      width: 30px;
+      height: 80px;
+      background-color: #333;
+      border-radius: 15px;
+      touch-action: none;
+    }
+
+    .trigger:active {
+      background-color: #666;
+    }
+  </style>
+</head>
+<body>
+  <!-- 连接状态 -->
+  <div class="status disconnected" id="status">未连接</div>
+
+  <!-- 上半部分：方向键 + 功能键 -->
+  <div class="top-area">
+    <!-- 方向键 -->
+    <div class="d-pad">
+      <div class="d-pad-btn d-up" data-key="dpadUp">↑</div>
+      <div class="d-pad-btn d-down" data-key="dpadDown">↓</div>
+      <div class="d-pad-btn d-left" data-key="dpadLeft">←</div>
+      <div class="d-pad-btn d-right" data-key="dpadRight">→</div>
+    </div>
+
+    <!-- A/B/X/Y键 -->
+    <div class="action-buttons">
+      <div class="action-btn btn-a" data-key="a">A</div>
+      <div class="action-btn btn-b" data-key="b">B</div>
+      <div class="action-btn btn-x" data-key="x">X</div>
+      <div class="action-btn btn-y" data-key="y">Y</div>
+    </div>
+  </div>
+
+  <!-- 中间功能键 -->
+  <div class="middle-buttons">
+    <div class="middle-btn" data-key="back">◀</div>
+    <div class="middle-btn" data-key="start">▶</div>
+    <div class="middle-btn" data-key="guide">●</div> <!-- 西瓜键 -->
+  </div>
+
+  <!-- 下半部分：左右摇杆 + 扳机键 -->
+  <div class="bottom-area">
+    <!-- 左摇杆 -->
+    <div class="joystick" id="leftJoystick" data-type="left">
+      <div class="joystick-knob"></div>
+    </div>
+
+    <!-- 扳机键 -->
+    <div class="triggers">
+      <div class="trigger" data-key="leftTrigger" data-type="trigger">LT</div>
+      <div class="trigger" data-key="rightTrigger" data-type="trigger">RT</div>
+    </div>
+
+    <!-- 右摇杆 -->
+    <div class="joystick" id="rightJoystick" data-type="right">
+      <div class="joystick-knob"></div>
+    </div>
+  </div>
+
+  <script>
+    // 1. WebSocket连接配置（自动获取电脑IP）
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = window.location.host;
+    let ws;
+    let isConnected = false;
+
+    // 2. 更新连接状态
+    function updateStatus(connected) {
+      const statusEl = document.getElementById('status');
+      isConnected = connected;
+      if (connected) {
+        statusEl.className = 'status connected';
+        statusEl.textContent = '已连接';
+      } else {
+        statusEl.className = 'status disconnected';
+        statusEl.textContent = '未连接';
+      }
+    }
+
+    // 3. 建立WebSocket连接
+    function connectWebSocket() {
+      ws = new WebSocket(`${wsProtocol}//${wsHost}`);
+
+      ws.onopen = () => {
+        updateStatus(true);
+      };
+
+      ws.onclose = () => {
+        updateStatus(false);
+        // 断线重连
+        setTimeout(connectWebSocket, 3000);
+      };
+
+      ws.onerror = (err) => {
+        updateStatus(false);
+        console.error('WebSocket错误：', err);
+      };
+    }
+
+    // 4. 发送指令到电脑端
+    function sendCommand(cmd) {
+      if (isConnected && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(cmd));
+      }
+    }
+
+    // 5. 按键事件处理（按下/释放）
+    const allButtons = document.querySelectorAll('[data-key]');
+    allButtons.forEach(btn => {
+      const key = btn.getAttribute('data-key');
+      const type = btn.getAttribute('data-type') || 'button';
+
+      // 触摸开始（按下）
+      btn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        sendCommand({ type, key, value: 1 });
+      });
+
+      // 触摸结束（释放）
+      btn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        sendCommand({ type, key, value: 0 });
+      });
+
+      // 鼠标事件（用于测试）
+      btn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        sendCommand({ type, key, value: 1 });
+      });
+
+      btn.addEventListener('mouseup', (e) => {
+        e.preventDefault();
+        sendCommand({ type, key, value: 0 });
+      });
+    });
+
+    // 6. 摇杆事件处理（触摸拖动）
+    function initJoystick(joystickId, joystickType) {
+      const joystick = document.getElementById(joystickId);
+      const knob = joystick.querySelector('.joystick-knob');
+      const joystickRect = joystick.getBoundingClientRect();
+      const joystickRadius = joystick.offsetWidth / 2;
+      const knobRadius = knob.offsetWidth / 2;
+      let isDragging = false;
+
+      // 重置摇杆位置
+      function resetJoystick() {
+        knob.style.transform = 'translate(-50%, -50%)';
+        // 发送重置指令（轴值归0）
+        if (joystickType === 'left') {
+          sendCommand({ type: 'joystick', key: 'leftStickX', value: 0 });
+          sendCommand({ type: 'joystick', key: 'leftStickY', value: 0 });
+        } else {
+          sendCommand({ type: 'joystick', key: 'rightStickX', value: 0 });
+          sendCommand({ type: 'joystick', key: 'rightStickY', value: 0 });
+        }
+      }
+
+      // 计算摇杆轴值（范围：-1 ~ 1）
+      function calculateAxisValue(clientX, clientY) {
+        const centerX = joystickRect.left + joystickRadius;
+        const centerY = joystickRect.top + joystickRadius;
+        const deltaX = clientX - centerX;
+        const deltaY = clientY - centerY;
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        const maxDistance = joystickRadius - knobRadius;
+
+        // 限制摇杆移动范围
+        let normalizedX = deltaX / maxDistance;
+        let normalizedY = deltaY / maxDistance;
+        const magnitude = Math.sqrt(normalizedX * normalizedX + normalizedY * normalizedY);
+
+        if (magnitude > 1) {
+          normalizedX /= magnitude;
+          normalizedY /= magnitude;
+        }
+
+        // Xbox摇杆Y轴反向（上为-1，下为1）
+        normalizedY = -normalizedY;
+
+        return { x: normalizedX, y: normalizedY };
+      }
+
+      // 触摸开始
+      joystick.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        isDragging = true;
+      });
+
+      // 触摸移动
+      document.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+
+        const touch = e.touches[0];
+        const { x, y } = calculateAxisValue(touch.clientX, touch.clientY);
+
+        // 更新摇杆视觉位置
+        const offsetX = x * (joystickRadius - knobRadius);
+        const offsetY = -y * (joystickRadius - knobRadius); // 视觉上Y轴正向
+        knob.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+
+        // 发送摇杆指令
+        if (joystickType === 'left') {
+          sendCommand({ type: 'joystick', key: 'leftStickX', value: x });
+          sendCommand({ type: 'joystick', key: 'leftStickY', value: y });
+        } else {
+          sendCommand({ type: 'joystick', key: 'rightStickX', value: x });
+          sendCommand({ type: 'joystick', key: 'rightStickY', value: y });
+        }
+      });
+
+      // 触摸结束
+      document.addEventListener('touchend', () => {
+        if (isDragging) {
+          isDragging = false;
+          resetJoystick();
+        }
+      });
+    }
+
+    // 初始化左右摇杆
+    initJoystick('leftJoystick', 'left');
+    initJoystick('rightJoystick', 'right');
+
+    // 初始化WebSocket连接
+    window.addEventListener('load', () => {
+      connectWebSocket();
+    });
+  </script>
+</body>
+</html>
