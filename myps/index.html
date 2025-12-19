@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>手机模拟Xbox手柄</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      touch-action: manipulation; /* 禁用触摸缩放 */
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      background-color: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px 10px;
+      font-family: Arial, sans-serif;
+      color: #fff;
+    }
+
+    /* 连接状态提示 */
+    .status {
+      text-align: center;
+      font-size: 14px;
+      margin-bottom: 10px;
+      height: 20px;
+    }
+
+    .status.connected {
+      color: #4CAF50;
+    }
+
+    .status.disconnected {
+      color: #f44336;
+    }
+
+    /* 上半部分：功能键 + 方向键 */
+    .top-area {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+    }
+
+    /* 方向键（十字键） */
+    .d-pad {
+      width: 120px;
+      height: 120px;
+      position: relative;
+    }
+
+    .d-pad-btn {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background-color: #333;
+      border-radius: 4px;
+      touch-action: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #999;
+    }
+
+    .d-up { top: 0; left: 40px; }
+    .d-down { bottom: 0; left: 40px; }
+    .d-left { left: 0; top: 40px; }
+    .d-right { right: 0; top: 40px; }
+
+    .d-pad-btn:active {
+      background-color: #666;
+    }
+
+    /* 功能键区域（A/B/X/Y + 菜单键） */
+    .action-buttons {
+      width: 120px;
+      height: 120px;
+      position: relative;
+    }
+
+    .action-btn {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      touch-action: none;
+    }
+
+    .btn-a { background-color: #4CAF50; bottom: 0; left: 40px; }
+    .btn-b { background-color: #f44336; right: 0; top: 40px; }
+    .btn-x { background-color: #2196F3; left: 0; top: 40px; }
+    .btn-y { background-color: #FFC107; top: 0; left: 40px; color: #1a1a1a; }
+
+    .action-btn:active {
+      opacity: 0.7;
+      transform: scale(0.95);
+    }
+
+    /* 中间功能键（菜单/视图/西瓜键） */
+    .middle-buttons {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .middle-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 4px;
+      background-color: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: none;
+    }
+
+    .middle-btn:active {
+      background-color: #666;
+    }
+
+    /* 下半部分：左右摇杆 + 扳机键 */
+    .bottom-area {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+    }
+
+    /* 摇杆样式 */
+    .joystick {
+      width: 80px;
+      height: 80px;
+      background-color: #222;
+      border-radius: 50%;
+      position: relative;
+      touch-action: none;
+      overflow: hidden;
+    }
+
+    .joystick-knob {
+      width: 40px;
+      height: 40px;
+      background-color: #555;
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      touch-action: none;
+      z-index: 2;
+    }
+
+    .joystick:active .joystick-knob {
+      background-color: #777;
+    }
+
+    /* 扳机键（LT/RT） */
+    .triggers {
+      display: flex;
+      gap: 20px;
+    }
+
+    .trigger {
+      width: 30px;
+      height: 80px;
+      background-color: #333;
+      border-radius: 15px;
+      touch-action: none;
+    }
+
+    .trigger:active {
+      background-color: #666;
+    }
+  </style>
+</head>
+<body>
+  <!-- 连接状态 -->
+  <div class="status disconnected" id="status">未连接</div>
+
+  <!-- 上半部分：方向键 + 功能键 -->
+  <div class="top-area">
+    <!-- 方向键 -->
+    <div class="d-pad">
+      <div class="d-pad-btn d-up" data-key="dpadUp">↑</div>
+      <div class="d-pad-btn d-down" data-key="dpadDown">↓</div>
+      <div class="d-pad-btn d-left" data-key="dpadLeft">←</div>
+      <div class="d-pad-btn d-right" data-key="dpadRight">→</div>
+    </div>
+
+    <!-- A/B/X/Y键 -->
+    <div class="action-buttons">
+      <div class="action-btn btn-a" data-key="a">A</div>
+      <div class="action-btn btn-b" data-key="b">B</div>
+      <div class="action-btn btn-x" data-key="x">X</div>
+      <div class="action-btn btn-y" data-key="y">Y</div>
+    </div>
+  </div>
+
+  <!-- 中间功能键 -->
+  <div class="middle-buttons">
+    <div class="middle-btn" data-key="back">◀</div>
+    <div class="middle-btn" data-key="start">▶</div>
+    <div class="middle-btn" data-key="guide">●</div> <!-- 西瓜键 -->
+  </div>
+
+  <!-- 下半部分：左右摇杆 + 扳机键 -->
+  <div class="bottom-area">
+    <!-- 左摇杆 -->
+    <div class="joystick" id="leftJoystick" data-type="left">
+      <div class="joystick-knob"></div>
+    </div>
+
+    <!-- 扳机键 -->
+    <div class="triggers">
+      <div class="trigger" data-key="leftTrigger" data-type="trigger">LT</div>
+      <div class="trigger" data-key="rightTrigger" data-type="trigger">RT</div>
+    </div>
+
+    <!-- 右摇杆 -->
+    <div class="joystick" id="rightJoystick" data-type="right">
+      <div class="joystick-knob"></div>
+    </div>
+  </div>
+
+  <script>
+    // 替换原WebSocket连接配置部分（index.html中的<script>标签内）
+// 1. 新增：让用户手动输入电脑局域网IP和端口（因GitHub Pages是公共域名，无法自动获取本地IP）
+let ws;
+let isConnected = false;
+let localServerIP = '';
+let localServerPort = '3000';
+
+// 弹出输入框获取电脑本地IP（首次加载时）
+window.addEventListener('load', () => {
+  // 先获取用户输入的电脑局域网IP
+  localServerIP = prompt('请输入电脑的局域网IP（如192.168.1.100）：', '');
+  if (!localServerIP) {
+    alert('未输入IP，无法连接！');
+    return;
+  }
+  // 可选：让用户修改端口
+  const portInput = prompt('请输入服务端口（默认3000）：', '3000');
+  if (portInput) localServerPort = portInput;
+
+  // 建立WebSocket连接
+  connectWebSocket();
+  // 初始化摇杆
+  initJoystick('leftJoystick', 'left');
+  initJoystick('rightJoystick', 'right');
+});
+
+// 2. 调整WebSocket连接地址（指向电脑本地服务）
+function connectWebSocket() {
+  // 注意：GitHub Pages若为HTTPS，WebSocket需用wss；本地服务是HTTP，用ws
+  // 解决跨域问题：本地server.js需开启CORS（下方会调整）
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsHost = `${localServerIP}:${localServerPort}`;
+  ws = new WebSocket(`${wsProtocol}//${wsHost}`);
+
+  ws.onopen = () => {
+    updateStatus(true);
+  };
+
+  ws.onclose = () => {
+    updateStatus(false);
+    // 断线重连（重连时无需重新输入IP）
+    setTimeout(connectWebSocket, 3000);
+  };
+
+  ws.onerror = (err) => {
+    updateStatus(false);
+    console.error('WebSocket错误：', err);
+    alert(`连接失败！请检查：1. 电脑已启动服务 2. 手机与电脑同一局域网 3. IP和端口正确`);
+  };
+}
+  </script>
+</body>
+</html>
